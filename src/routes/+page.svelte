@@ -1,2 +1,201 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<script>
+	import { onMount, onDestroy } from 'svelte';
+	import { Toaster, toast } from 'svelte-sonner';
+	// import { EnterIcon, LoadingIcon } from '$lib/icons';
+	import { playerStore } from '$lib/playerStore';
+	import { MicVAD, utils } from '@ricky0123/vad-web';
+	// import { track } from '@vercel/analytics';
+
+	let input = '';
+	let inputElement;
+	let messages = [];
+	let isPending = false;
+	let vad;
+	let player;
+
+	onMount(async () => {
+		player = playerStore;
+
+		vad = await MicVAD.new({
+			startOnLoad: true,
+			onSpeechStart: () => {
+				console.log('well well');
+			},
+			onSpeechEnd: (audio) => {
+				player.stop();
+				const wav = utils.encodeWAV(audio);
+				const blob = new Blob([wav], { type: 'audio/wav' });
+				submit(blob);
+				const isFirefox = navigator.userAgent.includes('Firefox');
+				if (isFirefox) vad.pause();
+			},
+			workletURL: '/vad.worklet.bundle.min.js',
+			modelURL: '/silero_vad.onnx',
+			positiveSpeechThreshold: 0.6,
+			minSpeechFrames: 4,
+			ortConfig(ort) {
+				const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+				ort.env.wasm = {
+					wasmPaths: {
+						'ort-wasm-simd-threaded.wasm': '/ort-wasm-simd-threaded.wasm',
+						'ort-wasm-simd.wasm': '/ort-wasm-simd.wasm',
+						'ort-wasm.wasm': '/ort-wasm.wasm',
+						'ort-wasm-threaded.wasm': '/ort-wasm-threaded.wasm'
+					},
+					numThreads: isSafari ? 1 : 4
+				};
+			}
+		});
+		vad.start();
+
+		// vad = MicVAD({
+		// 	startOnLoad: true,
+		// 	onSpeechEnd: (audio) => {
+		// 		player.stop();
+		// 		const wav = utils.encodeWAV(audio);
+		// 		const blob = new Blob([wav], { type: 'audio/wav' });
+		// 		submit(blob);
+		// 		const isFirefox = navigator.userAgent.includes('Firefox');
+		// 		if (isFirefox) vad.pause();
+		// 	},
+		// 	workletURL: '/vad.worklet.bundle.min.js',
+		// 	modelURL: '/silero_vad.onnx',
+		// 	positiveSpeechThreshold: 0.6,
+		// 	minSpeechFrames: 4,
+		// 	ortConfig(ort) {
+		// 		const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+		// 		ort.env.wasm = {
+		// 			wasmPaths: {
+		// 				'ort-wasm-simd-threaded.wasm': '/ort-wasm-simd-threaded.wasm',
+		// 				'ort-wasm-simd.wasm': '/ort-wasm-simd.wasm',
+		// 				'ort-wasm.wasm': '/ort-wasm.wasm',
+		// 				'ort-wasm-threaded.wasm': '/ort-wasm-threaded.wasm'
+		// 			},
+		// 			numThreads: isSafari ? 1 : 4
+		// 		};
+		// 	}
+		// });
+
+		const handleKeyDown = (e) => {
+			if (e.key === 'Enter') return inputElement.focus();
+			if (e.key === 'Escape') return (input = '');
+		};
+
+		window.addEventListener('keydown', handleKeyDown);
+
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown);
+		};
+	});
+
+	async function submit(data) {
+		isPending = true;
+		const formData = new FormData();
+
+		if (typeof data === 'string') {
+			formData.append('input', data);
+		} else {
+			formData.append('input', data, 'audio.wav');
+		}
+
+		for (const message of messages) {
+			formData.append('message', JSON.stringify(message));
+		}
+
+		const submittedAt = Date.now();
+		try {
+			const response = await fetch('/api/chat', {
+				method: 'POST',
+				body: formData
+			});
+
+			const transcript = decodeURIComponent(response.headers.get('X-Transcript') || '');
+			const text = decodeURIComponent(response.headers.get('X-Response') || '');
+			console.log('TEXT: ', text);
+			if (!response.ok || !transcript || !text || !response.body) {
+				if (response.status === 429) {
+					toast.error('Too many requests. Please try again later.');
+				} else {
+					toast.error((await response.text()) || 'An error occurred.');
+				}
+				return;
+			}
+
+			const latency = Date.now() - submittedAt;
+			player.play(response.body, () => {
+				const isFirefox = navigator.userAgent.includes('Firefox');
+				if (isFirefox) vad.start();
+			});
+			input = transcript;
+
+			messages = [
+				...messages,
+				{ role: 'user', content: transcript },
+				{ role: 'assistant', content: text, latency }
+			];
+		} finally {
+			isPending = false;
+		}
+	}
+
+	function handleFormSubmit(e) {
+		e.preventDefault();
+		submit(input);
+	}
+</script>
+
+<div class="min-h-28 pb-4" />
+
+<form
+	class="flex w-full max-w-3xl items-center rounded-full border border-transparent bg-neutral-200/80 focus-within:border-neutral-400 hover:border-neutral-300 hover:focus-within:border-neutral-400 dark:bg-neutral-800/80 dark:focus-within:border-neutral-600 dark:hover:border-neutral-700 dark:hover:focus-within:border-neutral-600"
+	on:submit={handleFormSubmit}
+>
+	<input
+		type="text"
+		class="w-full bg-transparent p-4 placeholder:text-neutral-600 focus:outline-none dark:placeholder:text-neutral-400"
+		required
+		placeholder=""
+		bind:value={input}
+		bind:this={inputElement}
+	/>
+
+	<button
+		type="submit"
+		class="p-4 text-neutral-700 hover:text-black dark:text-neutral-300 dark:hover:text-white"
+		disabled={isPending}
+		aria-label="Submit"
+	>
+		{#if isPending}
+			Loading
+		{:else}
+			Enter
+		{/if}
+	</button>
+</form>
+
+<div
+	class="min-h-28 max-w-xl space-y-4 text-balance pt-4 text-center text-neutral-400 dark:text-neutral-600"
+>
+	{#if messages.length > 0}
+		<p>
+			{messages[messages.length - 1].content}
+			<span class="font-mono text-xs text-neutral-300 dark:text-neutral-700">
+				({messages[messages.length - 1].latency}ms)
+			</span>
+		</p>
+		<!-- {:else if vad.loading}
+		<p>Loading speech detection...</p>
+	{:else if vad.errored}
+		<p>Failed to load speech detection.</p>
+	{:else}
+		<p>Start talking to chat.</p> -->
+	{/if}
+</div>
+
+<!-- <div
+	class="absolute -z-50 size-36 rounded-full bg-gradient-to-b from-red-200 to-red-400 blur-3xl transition ease-in-out dark:from-red-600 dark:to-red-800"
+	class:opacity-0={vad.loading || vad.errored}
+	class:opacity-30={!vad.loading && !vad.errored && !vad.userSpeaking}
+	class:opacity-100={vad.userSpeaking}
+	class:scale-110={vad.userSpeaking}
+/> -->
