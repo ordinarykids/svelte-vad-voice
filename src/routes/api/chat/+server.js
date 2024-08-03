@@ -66,7 +66,7 @@ export async function POST({ request }) {
 
 		// Call OpenAI API
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-4',
+			model: 'gpt-4o',
 			messages: [
 				...conversationHistory,
 				{
