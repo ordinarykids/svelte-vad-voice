@@ -144,52 +144,57 @@
 	}
 </script>
 
-<div class="min-h-28 pb-4" />
+<div>
+	<p class="mt-8 text-xs">
+		Sage is an experimental application that aims to test long term relationships with users.
+	</p>
+	<div class="min-h-28 pb-4" />
 
-<form
-	class="flex w-full max-w-3xl items-center rounded-full border border-transparent bg-neutral-200/80 focus-within:border-neutral-400 hover:border-neutral-300 hover:focus-within:border-neutral-400 dark:bg-neutral-800/80 dark:focus-within:border-neutral-600 dark:hover:border-neutral-700 dark:hover:focus-within:border-neutral-600"
-	on:submit={handleFormSubmit}
->
-	<input
-		type="text"
-		class="w-full bg-transparent p-4 placeholder:text-neutral-600 focus:outline-none dark:placeholder:text-neutral-400"
-		required
-		placeholder=""
-		bind:value={input}
-		bind:this={inputElement}
-	/>
-
-	<button
-		type="submit"
-		class="p-4 text-neutral-700 hover:text-black dark:text-neutral-300 dark:hover:text-white"
-		disabled={isPending}
-		aria-label="Submit"
+	<form
+		class="flex w-full max-w-3xl items-center rounded-full border border-transparent bg-neutral-200/80 focus-within:border-neutral-400 hover:border-neutral-300 hover:focus-within:border-neutral-400 dark:bg-neutral-800/80 dark:focus-within:border-neutral-600 dark:hover:border-neutral-700 dark:hover:focus-within:border-neutral-600"
+		on:submit={handleFormSubmit}
 	>
-		{#if isPending}
-			Loading
-		{:else}
-			Enter
-		{/if}
-	</button>
-</form>
+		<input
+			type="text"
+			class="w-full bg-transparent p-4 placeholder:text-neutral-600 focus:outline-none dark:placeholder:text-neutral-400"
+			required
+			placeholder=""
+			bind:value={input}
+			bind:this={inputElement}
+		/>
 
-<div
-	class="min-h-28 max-w-xl space-y-4 text-balance pt-4 text-center text-neutral-400 dark:text-neutral-600"
->
-	{#if messages.length > 0}
-		<p>
-			{messages[messages.length - 1].content}
-			<span class="font-mono text-xs text-neutral-300 dark:text-neutral-700">
-				({messages[messages.length - 1].latency}ms)
-			</span>
-		</p>
-		<!-- {:else if vad.loading}
-		<p>Loading speech detection...</p>
-	{:else if vad.errored}
-		<p>Failed to load speech detection.</p>
-	{:else}
-		<p>Start talking to chat.</p> -->
-	{/if}
+		<button
+			type="submit"
+			class="p-4 text-neutral-700 hover:text-black dark:text-neutral-300 dark:hover:text-white"
+			disabled={isPending}
+			aria-label="Submit"
+		>
+			{#if isPending}
+				Loading
+			{:else}
+				Enter
+			{/if}
+		</button>
+	</form>
+
+	<div
+		class="min-h-28 max-w-xl space-y-4 text-balance pt-4 text-center text-neutral-400 dark:text-neutral-600"
+	>
+		{#if messages.length > 0}
+			<p>
+				{messages[messages.length - 1].content}
+				<span class="font-mono text-xs text-neutral-300 dark:text-neutral-700">
+					({messages[messages.length - 1].latency}ms)
+				</span>
+			</p>
+			<!-- {:else if vad.loading}
+			<p>Loading speech detection...</p>
+		{:else if vad.errored}
+			<p>Failed to load speech detection.</p>
+		{:else}
+			<p>Start talking to chat.</p> -->
+		{/if}
+	</div>
 </div>
 
 <!-- <div

@@ -70,12 +70,19 @@ export async function POST({ request }) {
 
 		// Call OpenAI API
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-4o-mini',
+			model: 'gpt-4o',
 			messages: [
 				...conversationHistory,
 				{
 					role: 'system',
-					content: `- You are a monkey who really loves bananas. And like to tell jokes about Tarzan and swinging in vines. `
+					content: `
+                    
+                    
+You are a san francisco skateboarder, older, middle aged. You are into punk rock, hip hop and read lots of books about south american literatute.                     
+                    
+                    
+                    
+                    `
 				},
 				{ role: 'user', content: message }
 			]
@@ -110,7 +117,8 @@ export async function POST({ request }) {
 				transcript: response,
 				voice: {
 					mode: 'id',
-					id: '79a125e8-cd45-4c13-8a67-188112f4dd22'
+					//	id: '79a125e8-cd45-4c13-8a67-188112f4dd22'
+					id: 'd46abd1d-2d02-43e8-819f-51fb652c1c61' // newsman
 				},
 				output_format: {
 					container: 'raw',
