@@ -23,6 +23,9 @@ importers:
       openai:
         specifier: ^4.54.0
         version: 4.54.0(encoding@0.1.13)
+      pocketbase:
+        specifier: ^0.21.4
+        version: 0.21.4
       sqlite:
         specifier: ^5.1.1
         version: 5.1.1
@@ -1491,6 +1494,9 @@ packages:
     resolution: {integrity: sha512-QhVaS+lpluxCaioejDZ95l4Y4jSFCsBvl2UZkpeXlzxmqS+aABr5c82YmfMHrL6x27nvrvykJAFpkzT2eWdJww==}
     engines: {node: '>=18'}
     hasBin: true
+
+  pocketbase@0.21.4:
+    resolution: {integrity: sha512-WJHyaqdAt95JgZ1OCRD099+DST4IIG0M/jMrCckWYDSN/6ocp61qsz7m6h0xI0J2N79ScBljceEC0fFAaQrrAw==}
 
   postcss-import@15.1.0:
     resolution: {integrity: sha512-hpr+J05B2FVYUAXHeK1YyI267J/dDDhMU6B6civm8hSY1jYJnBXxzKDKDswzJmtLHryrjhnDjqqp/49t8FALew==}
@@ -3444,6 +3450,8 @@ snapshots:
       playwright-core: 1.45.3
     optionalDependencies:
       fsevents: 2.3.2
+
+  pocketbase@0.21.4: {}
 
   postcss-import@15.1.0(postcss@8.4.40):
     dependencies:

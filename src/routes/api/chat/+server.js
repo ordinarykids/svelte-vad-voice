@@ -2,13 +2,20 @@ import { json } from '@sveltejs/kit';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { zfd } from 'zod-form-data';
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
-import { OPENAI_API_KEY, CARTESIA_API_KEY } from '$env/static/private';
+import PocketBase from 'pocketbase';
+import {
+	OPENAI_API_KEY,
+	CARTESIA_API_KEY,
+	POCKETBASE_URL,
+	POCKETBASE_EMAIL,
+	POCKETBASE_PASS
+} from '$env/static/private';
 
 const openai = new OpenAI({
 	apiKey: OPENAI_API_KEY
 });
+
+const pb = new PocketBase(POCKETBASE_URL);
 
 const schema = zfd.formData({
 	input: z.union([zfd.text(), zfd.file()]),
@@ -22,27 +29,15 @@ const schema = zfd.formData({
 	)
 });
 
-// Initialize SQLite database
-let db;
-(async () => {
-	db = await open({
-		filename: 'chat_history.db',
-		driver: sqlite3.Database
-	});
-
-	await db.exec(`
-    CREATE TABLE IF NOT EXISTS conversations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT,
-      user_input TEXT,
-      ai_response TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-})();
-
 export async function POST({ request }) {
-	// console.time('transcribe ' + request.headers.get('x-vercel-id') || 'local');
+	//console.log(pb);
+
+	const authData = await pb.admins.authWithPassword(POCKETBASE_EMAIL, POCKETBASE_PASS);
+
+	// after the above you can also access the auth data from the authStore
+	console.log(pb.authStore.isValid);
+	console.log(pb.authStore.token);
+	console.log(pb.authStore.model.id);
 
 	const formData = await request.formData();
 	const { data, success } = schema.safeParse(formData);
@@ -56,32 +51,28 @@ export async function POST({ request }) {
 
 	try {
 		console.time('API Call Duration');
+
 		// Retrieve previous conversations for this user
-		const previousConversations = await db.all(
-			'SELECT user_input, ai_response FROM conversations WHERE user_id = ? ORDER BY timestamp DESC LIMIT 20',
-			[user_id]
-		);
+		const previousConversations = await pb.collection('conversations').getList(1, 20, {
+			filter: `user_id = "${user_id}"`,
+			sort: '-created'
+		});
 
 		// Prepare conversation history for OpenAI
-		const conversationHistory = previousConversations.reverse().flatMap((conv) => [
+		const conversationHistory = previousConversations.items.reverse().flatMap((conv) => [
 			{ role: 'user', content: conv.user_input },
 			{ role: 'assistant', content: conv.ai_response }
 		]);
 
 		// Call OpenAI API
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-4o',
+			model: 'gpt-4',
 			messages: [
 				...conversationHistory,
 				{
 					role: 'system',
 					content: `
-                    
-                    
-You are a san francisco skateboarder, older, middle aged. You are into punk rock, hip hop and read lots of books about south american literatute.                     
-                    
-                    
-                    
+                    You are a san francisco skateboarder, older, middle aged. You are into punk rock, hip hop and read lots of books about south american literature.                     
                     `
 				},
 				{ role: 'user', content: message }
@@ -90,12 +81,12 @@ You are a san francisco skateboarder, older, middle aged. You are into punk rock
 
 		const aiResponse = completion.choices[0].message.content;
 
-		// Store the conversation in the database
-		await db.run('INSERT INTO conversations (user_id, user_input, ai_response) VALUES (?, ?, ?)', [
-			user_id,
-			message,
-			aiResponse
-		]);
+		// Store the conversation in PocketBase
+		await pb.collection('conversations').create({
+			user_id: user_id,
+			user_input: message,
+			ai_response: aiResponse
+		});
 
 		const response = aiResponse;
 
@@ -117,7 +108,6 @@ You are a san francisco skateboarder, older, middle aged. You are into punk rock
 				transcript: response,
 				voice: {
 					mode: 'id',
-					//	id: '79a125e8-cd45-4c13-8a67-188112f4dd22'
 					id: 'd46abd1d-2d02-43e8-819f-51fb652c1c61' // newsman
 				},
 				output_format: {
