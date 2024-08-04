@@ -7,6 +7,7 @@ function createPlayerStore() {
 
 	async function play(stream, callback) {
 		stop();
+		audioContext = null;
 		audioContext = new AudioContext({ sampleRate: 24000 });
 
 		let nextStartTime = audioContext.currentTime;
@@ -52,6 +53,7 @@ function createPlayerStore() {
 			audioContext = null;
 		}
 		set(false);
+		console.log('Player Stopped');
 	}
 
 	return {

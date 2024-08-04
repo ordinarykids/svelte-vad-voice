@@ -1,5 +1,10 @@
 <script>
+	import { inject } from '@vercel/analytics';
 	import '../app.css';
+
+	import { dev } from '$app/environment';
+
+	inject({ mode: dev ? 'development' : 'production' });
 </script>
 
 <div class="container m-auto mt-16 w-3/4">
@@ -33,7 +38,7 @@
 			<rect x="5" y="9" width="1" height="1" fill="black" />
 		</svg>
 	</div>
-	<div class="m-auto w-1/4">
+	<div class="m-auto w-1/2">
 		<slot></slot>
 	</div>
 </div>

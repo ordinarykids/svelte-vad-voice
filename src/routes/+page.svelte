@@ -4,6 +4,7 @@
 	// import { EnterIcon, LoadingIcon } from '$lib/icons';
 	import { playerStore } from '$lib/playerStore';
 	import { MicVAD, utils } from '@ricky0123/vad-web';
+	// import AudioPlayer from '$lib/intro-audio.svelte';
 	// import { track } from '@vercel/analytics';
 
 	let input = '';
@@ -12,6 +13,16 @@
 	let isPending = false;
 	let vad;
 	let player;
+	let probIsSpeech;
+
+	let audioContext;
+	let analyser;
+	let microphone;
+	let volume = 0;
+
+	function reduceToTwoDecimals(number) {
+		return Number(number.toFixed(2));
+	}
 
 	onMount(async () => {
 		player = playerStore;
@@ -19,13 +30,23 @@
 		vad = await MicVAD.new({
 			startOnLoad: true,
 			onSpeechStart: () => {
-				console.log('well well');
+				// console.log('well well');
+			},
+			onFrameProcessed: (probs) => {
+				// probIsSpeech = reduceToTwoDecimals(probs.isSpeech);
+				// if (probIsSpeech >= 0.5 && volume >= 40) {
+				// 	console.log('probIsSpeech', probIsSpeech);
+				// 	player.stop();
+				// }
 			},
 			onSpeechEnd: (audio) => {
-				player.stop();
 				const wav = utils.encodeWAV(audio);
 				const blob = new Blob([wav], { type: 'audio/wav' });
+				// console.log('volume high', volume);
+
+				player.stop();
 				submit(blob);
+
 				const isFirefox = navigator.userAgent.includes('Firefox');
 				if (isFirefox) vad.pause();
 			},
@@ -47,34 +68,26 @@
 			}
 		});
 		vad.start();
+		try {
+			/// VOUME MONITOR
+			audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-		// vad = MicVAD({
-		// 	startOnLoad: true,
-		// 	onSpeechEnd: (audio) => {
-		// 		player.stop();
-		// 		const wav = utils.encodeWAV(audio);
-		// 		const blob = new Blob([wav], { type: 'audio/wav' });
-		// 		submit(blob);
-		// 		const isFirefox = navigator.userAgent.includes('Firefox');
-		// 		if (isFirefox) vad.pause();
-		// 	},
-		// 	workletURL: '/vad.worklet.bundle.min.js',
-		// 	modelURL: '/silero_vad.onnx',
-		// 	positiveSpeechThreshold: 0.6,
-		// 	minSpeechFrames: 4,
-		// 	ortConfig(ort) {
-		// 		const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-		// 		ort.env.wasm = {
-		// 			wasmPaths: {
-		// 				'ort-wasm-simd-threaded.wasm': '/ort-wasm-simd-threaded.wasm',
-		// 				'ort-wasm-simd.wasm': '/ort-wasm-simd.wasm',
-		// 				'ort-wasm.wasm': '/ort-wasm.wasm',
-		// 				'ort-wasm-threaded.wasm': '/ort-wasm-threaded.wasm'
-		// 			},
-		// 			numThreads: isSafari ? 1 : 4
-		// 		};
-		// 	}
-		// });
+			// Request microphone access
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+			// Create an analyser node
+			analyser = audioContext.createAnalyser();
+			analyser.fftSize = 256;
+
+			// Connect the microphone to the analyser
+			microphone = audioContext.createMediaStreamSource(stream);
+			microphone.connect(analyser);
+
+			// Start monitoring the volume
+			updateVolume();
+		} catch (error) {
+			console.error('Error accessing microphone:', error);
+		}
 
 		const handleKeyDown = (e) => {
 			if (e.key === 'Enter') return inputElement.focus();
@@ -87,6 +100,26 @@
 			window.removeEventListener('keydown', handleKeyDown);
 		};
 	});
+
+	onDestroy(() => {
+		if (audioContext) {
+			audioContext.close();
+		}
+	});
+
+	function updateVolume() {
+		const dataArray = new Uint8Array(analyser.frequencyBinCount);
+		analyser.getByteFrequencyData(dataArray);
+
+		// Calculate the average volume
+		const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+
+		// Normalize the volume to a 0-100 scale
+		volume = Math.round((average / 255) * 100);
+
+		// Schedule the next update
+		requestAnimationFrame(updateVolume);
+	}
 
 	async function submit(data) {
 		isPending = true;
@@ -122,6 +155,7 @@
 			}
 
 			const latency = Date.now() - submittedAt;
+
 			player.play(response.body, () => {
 				const isFirefox = navigator.userAgent.includes('Firefox');
 				if (isFirefox) vad.start();
@@ -176,9 +210,15 @@
 			{/if}
 		</button>
 	</form>
+	<!-- 	 -->
+	<main>
+		<h1>Microphone Volume Meter</h1>
+		<p>Current volume: {volume}</p>
+		<progress value={volume} max="100"></progress>
+	</main>
 
 	<div
-		class="min-h-28 max-w-xl space-y-4 text-balance pt-4 text-center text-neutral-400 dark:text-neutral-600"
+		class="min-h-28 max-w-xl space-y-4 text-balance pt-4 text-center text-xs text-neutral-400 dark:text-neutral-600"
 	>
 		{#if messages.length > 0}
 			<p>

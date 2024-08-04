@@ -47,7 +47,7 @@ export async function POST({ request }) {
 	const message = transcript;
 	if (!message) return json({ error: 'Invalid audio' }, { status: 400 });
 
-	let user_id = '123';
+	let user_id = '1234';
 
 	try {
 		console.time('API Call Duration');
@@ -66,13 +66,15 @@ export async function POST({ request }) {
 
 		// Call OpenAI API
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-4o',
+			model: 'gpt-4o-mini',
 			messages: [
 				...conversationHistory,
 				{
 					role: 'system',
 					content: `
-                    You are a san francisco skateboarder, older, middle aged. You are into punk rock, hip hop and read lots of books about south american literature.                     
+                    You are life coach. A friend. A mentor. You are adept in reminding people about past conversations. You look back on previous messages and prompts from the user and bring the ideas back up. You are fantastic at asking probing quesitons.   
+                    
+                    You speak like NYC born hipster. Full of confidence and desires. 
                     `
 				},
 				{ role: 'user', content: message }
@@ -108,7 +110,11 @@ export async function POST({ request }) {
 				transcript: response,
 				voice: {
 					mode: 'id',
-					id: 'd46abd1d-2d02-43e8-819f-51fb652c1c61' // newsman
+					id: 'd46abd1d-2d02-43e8-819f-51fb652c1c61', // newsman
+					__experimental_controls: {
+						// speed: 'fast',
+						emotion: ['positivity:high', 'curiosity']
+					}
 				},
 				output_format: {
 					container: 'raw',
