@@ -72,6 +72,7 @@ export async function POST({ request }) {
 				{
 					role: 'system',
 					content: `
+                    NEVER RESPOND WITH MORE THAN TWO SENTENCES
                     You are life coach. A friend. A mentor. You are adept in reminding people about past conversations. You look back on previous messages and prompts from the user and bring the ideas back up. You are fantastic at asking probing quesitons.   
                     
                     You speak like NYC born hipster. Full of confidence and desires. 
@@ -119,7 +120,7 @@ export async function POST({ request }) {
 				output_format: {
 					container: 'raw',
 					encoding: 'pcm_f32le',
-					sample_rate: 24000
+					sample_rate: 8000
 				}
 			})
 		});

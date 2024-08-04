@@ -1,3 +1,4 @@
+import { read } from '$app/server';
 import { writable } from 'svelte/store';
 
 function createPlayerStore() {
@@ -6,9 +7,7 @@ function createPlayerStore() {
 	let source = null;
 
 	async function play(stream, callback) {
-		stop();
-		audioContext = null;
-		audioContext = new AudioContext({ sampleRate: 24000 });
+		audioContext = new AudioContext({ sampleRate: 8000 });
 
 		let nextStartTime = audioContext.currentTime;
 		const reader = stream.getReader();
@@ -38,6 +37,7 @@ function createPlayerStore() {
 			nextStartTime += audioBuffer.duration;
 
 			result = await reader.read();
+
 			if (result.done) {
 				source.onended = () => {
 					stop();
